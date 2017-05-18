@@ -65,6 +65,8 @@
       <ExcludeFromStyleCop>False</ExcludeFromStyleCop>
     </Compile>
     <Compile Include="Utils\DisposableBase.cs" />
+    <Compile Include="Utils\DynamicDaemonFetchHandler.cs" />
+    <Compile Include="Utils\IFetchHandler.cs" />
     <Compile Include="Utils\ITimer.cs" />
     <Compile Include="Utils\IWebSocket.cs" />
     <Compile Include="Utils\TimerAdapter.cs">

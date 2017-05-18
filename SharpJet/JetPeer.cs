@@ -29,6 +29,7 @@
 // </copyright>
 
 using System.Runtime.CompilerServices;
+using Hbm.Devices.Jet.Utils;
 
 [assembly: InternalsVisibleTo("SharpJetTests")]
 
@@ -45,23 +46,20 @@ namespace Hbm.Devices.Jet
         private const double DefaultRoutingTimeout = 1000.0;
 
         private IJetConnection connection;
-        private int fetchIdCounter;
         private Dictionary<int, JetMethod> openRequests;
-        private Dictionary<int, JetFetcher> openFetches;
         private Dictionary<string, Func<string, JToken, JToken>> stateCallbacks;
         private Dictionary<string, Func<string, JToken, JToken>> methodCallbacks;
-        private HashSet<FetchId> allFetches;
+
+        internal IFetchHandler FetchHandler { get; set; }
 
         public JetPeer(IJetConnection connection)
         {
             this.openRequests = new Dictionary<int, JetMethod>();
-            this.openFetches = new Dictionary<int, JetFetcher>();
             this.stateCallbacks = new Dictionary<string, Func<string, JToken, JToken>>();
             this.methodCallbacks = new Dictionary<string, Func<string, JToken, JToken>>();
-            this.allFetches = new HashSet<FetchId>();
-
             this.connection = connection;
             connection.HandleIncomingMessage += this.HandleIncomingJson;
+            FetchHandler = new DynamicDaemonFetchHandler(this.ExecuteMethod);
         }
 
         public void Connect(Action<bool> completed, double timeoutMs)
@@ -73,7 +71,7 @@ namespace Hbm.Devices.Jet
         {
             RemoveAllStates();
             RemoveAllMethods();
-            removeAllFetches();
+            RemoveAllFetches();
 
             this.connection.Disconnect();
         }
@@ -344,42 +342,12 @@ namespace Hbm.Devices.Jet
 
         public JObject Fetch(out FetchId id, Matcher matcher, Action<JToken> fetchCallback, Action<bool, JToken> responseCallback, double responseTimeoutMs)
         {
-            int fetchId = Interlocked.Increment(ref this.fetchIdCounter);
-            JetFetcher fetcher = new JetFetcher(fetchCallback);
-            this.RegisterFetcher(fetchId, fetcher);
-
-            JObject parameters = new JObject();
-            JObject path = this.FillPath(matcher);
-            if (path != null)
-            {
-                parameters["path"] = path;
-            }
-
-            parameters["caseInsensitive"] = matcher.CaseInsensitive;
-            parameters["id"] = fetchId;
-            JetMethod fetch = new JetMethod(JetMethod.Fetch, parameters, responseCallback, responseTimeoutMs);
-            id = new FetchId(fetchId);
-            lock (allFetches)
-            {
-                allFetches.Add(id);
-            }
-
-            return this.ExecuteMethod(fetch);
+            return FetchHandler.Fetch(out id, matcher, fetchCallback, responseCallback, responseTimeoutMs);
         }
 
         public JObject Unfetch(FetchId fetchId, Action<bool, JToken> responseCallback, double responseTimeoutMs)
         {
-            this.UnregisterFetcher(fetchId.GetId());
-
-            JObject parameters = new JObject();
-            parameters["id"] = fetchId.GetId();
-            JetMethod unfetch = new JetMethod(JetMethod.Unfetch, parameters, responseCallback, responseTimeoutMs);
-            lock (allFetches)
-            {
-                allFetches.Remove(fetchId);
-            }
-
-            return this.ExecuteMethod(unfetch);
+            return FetchHandler.Unfetch(fetchId, responseCallback, responseTimeoutMs);
         }
 
         private static void RequestTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e, JetMethod method)
@@ -490,21 +458,9 @@ namespace Hbm.Devices.Jet
             }
         }
 
-        private void removeAllFetches()
+        private void RemoveAllFetches()
         {
-            var tempSet = new HashSet<FetchId>();
-            lock (allFetches)
-            {
-                foreach (var fetchId in allFetches)
-                {
-                    tempSet.Add(fetchId);
-                }
-            }
-
-            foreach (var fetchId in tempSet)
-            {
-                this.Unfetch(fetchId, null, 0);
-            }
+            FetchHandler.RemoveAllFetches();
         }
 
         private void RemoveAllStates()
@@ -572,22 +528,6 @@ namespace Hbm.Devices.Jet
             lock (this.methodCallbacks)
             {
                 this.methodCallbacks.Remove(path);
-            }
-        }
-
-        private void RegisterFetcher(int fetchId, JetFetcher fetcher)
-        {
-            lock (this.openFetches)
-            {
-                this.openFetches.Add(fetchId, fetcher);
-            }
-        }
-
-        private void UnregisterFetcher(int fetchId)
-        {
-            lock (this.openFetches)
-            {
-                this.openFetches.Remove(fetchId);
             }
         }
 
@@ -724,70 +664,7 @@ namespace Hbm.Devices.Jet
 
         private void HandleFetch(int fetchId, JObject json)
         {
-            JetFetcher fetcher = null;
-            lock (this.openFetches)
-            {
-                if (this.openFetches.ContainsKey(fetchId))
-                {
-                    fetcher = this.openFetches[fetchId];
-                }
-            }
-
-            if (fetcher != null)
-            {
-                JToken parameters = json["params"];
-                if ((parameters != null) && (parameters.Type != JTokenType.Null))
-                {
-                    fetcher.CallFetchCallback(parameters);
-                }
-                else
-                {
-                    // Todo: Log error
-                }
-            }
-        }
-
-        private JObject FillPath(Matcher matcher)
-        {
-            JObject path = new JObject();
-            if (!string.IsNullOrEmpty(matcher.Contains))
-            {
-                path["contains"] = matcher.Contains;
-            }
-
-            if (!string.IsNullOrEmpty(matcher.StartsWith))
-            {
-                path["startsWith"] = matcher.StartsWith;
-            }
-
-            if (!string.IsNullOrEmpty(matcher.EndsWith))
-            {
-                path["endsWith"] = matcher.EndsWith;
-            }
-
-            if (!string.IsNullOrEmpty(matcher.EqualsTo))
-            {
-                path["equals"] = matcher.EqualsTo;
-            }
-
-            if (!string.IsNullOrEmpty(matcher.EqualsNotTo))
-            {
-                path["equalsNot"] = matcher.EqualsNotTo;
-            }
-
-            if ((matcher.ContainsAllOf != null) && matcher.ContainsAllOf.Length > 0)
-            {
-                path["containsAllOf"] = JToken.FromObject(matcher.ContainsAllOf);
-            }
-            
-            if (path.Count == 0)
-            {
-                return null;
-            }
-            else
-            {
-                return path;
-            }
+            FetchHandler.HandleFetch(fetchId, json);
         }
 
         private bool IsResponse(JObject json)
