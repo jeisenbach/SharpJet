@@ -56,6 +56,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConnectTests.cs" />
+    <Compile Include="DynamicDaemonFetchHandlerTests.cs" />
     <Compile Include="FetchIdTests.cs" />
     <Compile Include="JetFetcherTests.cs" />
     <Compile Include="JetMethodTests.cs" />
