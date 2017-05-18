@@ -1,4 +1,4 @@
-﻿// <copyright file="WebSocketJetConnection.cs" company="Hottinger Baldwin Messtechnik GmbH">
+﻿// <copyright file="ConnectionState.cs" company="Hottinger Baldwin Messtechnik GmbH">
 //
 // SharpJet, a library to communicate with Jet IPC.
 //

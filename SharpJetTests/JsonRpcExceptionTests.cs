@@ -1,4 +1,4 @@
-﻿// <copyright file="JsonRpcException.cs" company="Hottinger Baldwin Messtechnik GmbH">
+﻿// <copyright file="JsonRpcExceptionTests.cs" company="Hottinger Baldwin Messtechnik GmbH">
 //
 // SharpJet, a library to communicate with Jet IPC.
 //

@@ -1,4 +1,4 @@
-﻿// <copyright file="FetchId.cs" company="Hottinger Baldwin Messtechnik GmbH">
+﻿// <copyright file="JetFetcherTests.cs" company="Hottinger Baldwin Messtechnik GmbH">
 //
 // SharpJet, a library to communicate with Jet IPC.
 //

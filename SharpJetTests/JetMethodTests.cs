@@ -1,4 +1,4 @@
-﻿// <copyright file="ConnectTests.cs" company="Hottinger Baldwin Messtechnik GmbH">
+﻿// <copyright file="JetMethodTests.cs" company="Hottinger Baldwin Messtechnik GmbH">
 //
 // SharpJet, a library to communicate with Jet IPC.
 //
