@@ -71,8 +71,8 @@ namespace Hbm.Devices.Jet
 
         public void Disconnect()
         {
-            removeAllStates();
-            removeAllMethods();
+            RemoveAllStates();
+            RemoveAllMethods();
             removeAllFetches();
 
             this.connection.Disconnect();
@@ -89,13 +89,13 @@ namespace Hbm.Devices.Jet
         /// </summary>
         /// <param name="name">A name for the connection. This name is mainly used on the daemon for better logging.</param>
         /// <param name="responseCallback">A callback method that will be called if this method succeeds or fails.</param>
-        /// <param name="responseTimeoutMilliseconds">The timeout how long the operation might take before failing.</param>
-        /// <returns>A JObject representing the Config message send to the Jet daemon.</returns>
-        public JObject Config(String name, Action<bool, JToken> responseCallback, double responseTimeoutMs)
+        /// <param name="responseTimeoutMs">The timeout how long the operation might take before failing.</param>
+        /// <returns>A <see cref="JObject"/> representing the Config message send to the Jet daemon.</returns>
+        public JObject Config(string name, Action<bool, JToken> responseCallback, double responseTimeoutMs)
         {
-            if (String.IsNullOrEmpty(name))
+            if (string.IsNullOrEmpty(name))
             {
-                throw new ArgumentNullException("name");
+                throw new ArgumentNullException(nameof(name));
             }
 
             JObject parameters = new JObject();
@@ -218,12 +218,12 @@ namespace Hbm.Devices.Jet
         {
             if (path == null)
             {
-                throw new ArgumentNullException("path");
+                throw new ArgumentNullException(nameof(path));
             }
 
             if (methodCallback == null)
             {
-                throw new ArgumentNullException("methodCallback");
+                throw new ArgumentNullException(nameof(methodCallback));
             }
 
             JObject parameters = new JObject();
@@ -259,16 +259,16 @@ namespace Hbm.Devices.Jet
 
         public JObject Set(string path, JToken value, Action<bool, JToken> responseCallback, double responseTimeoutMs, double stateSetTimeoutMs)
         {
-            if (String.IsNullOrEmpty(path))
+            if (string.IsNullOrEmpty(path))
             {
-                throw new ArgumentNullException("path");
+                throw new ArgumentNullException(nameof(path));
             }
 
             lock (this.stateCallbacks)
             {
                 if (this.stateCallbacks.ContainsKey(path))
                 {
-                    throw new ArgumentException("Don't call Set() on a state you own, use Change() instead!", "path");
+                    throw new ArgumentException("Don't call Set() on a state you own, use Change() instead!", nameof(path));
                 }
             }
 
@@ -507,7 +507,7 @@ namespace Hbm.Devices.Jet
             }
         }
 
-        private void removeAllStates()
+        private void RemoveAllStates()
         {
             var tempDictionary = new Dictionary<string, Func<string, JToken, JToken>>();
 
@@ -525,7 +525,7 @@ namespace Hbm.Devices.Jet
             }
         }
 
-        private void removeAllMethods()
+        private void RemoveAllMethods()
         {
             var tempDictionary = new Dictionary<string, Func<string, JToken, JToken>>();
 
