@@ -66,6 +66,7 @@
     <Compile Include="SetTests.cs" />
     <Compile Include="TestJetConnection.cs" />
     <Compile Include="TestSetConnection.cs" />
+    <Compile Include="PathBuilderTests.cs" />
     <Compile Include="Utils\WebSocketFakesFactory.cs" />
     <Compile Include="WebSocketJetConnectionTests.cs" />
   </ItemGroup>

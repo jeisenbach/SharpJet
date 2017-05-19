@@ -55,6 +55,18 @@ namespace SharpJetTests
         }
 
         [Test]
+        public void TestFetchFillsPath()
+        {
+            DynamicDaemonFetchHandler fetchHandler = new DynamicDaemonFetchHandler(A.Dummy<Func<JetMethod, JObject>>());
+            fetchHandler.PathBuilder = A.Fake<IPathBuilder>();
+            FetchId id;
+            Matcher matcher = new Matcher();
+            fetchHandler.Fetch(out id, matcher, A.Dummy<Action<JToken>>(), A.Dummy<Action<bool, JToken>>(),
+                1000.0);
+            A.CallTo(() => fetchHandler.PathBuilder.Fill(matcher)).MustHaveHappened(Repeated.Exactly.Once);
+        }
+
+        [Test]
         public void TestFetchInvokesWithJsonMethodFetch()
         {
             Func<JetMethod, JObject> jetMethodExecution = A.Fake<Func<JetMethod, JObject>>();
@@ -78,7 +90,7 @@ namespace SharpJetTests
                 1000.0);
 
             A.CallTo(() => jetMethodExecution(A<JetMethod>.That.Matches
-                    (m => m.GetTimeoutMs() == 1000.0 && m.GetRequestId() == 1)))
+                    (m => m.GetTimeoutMs() == 1000.0 && m.GetRequestId() > 0)))
                 .MustHaveHappened(Repeated.Exactly.Once);
         }
 
@@ -109,7 +121,7 @@ namespace SharpJetTests
             fetchHandler.Unfetch(id, A.Dummy<Action<bool, JToken>>(), 1000.0);
 
             A.CallTo(() => jetMethodExecution(A<JetMethod>.That.Matches
-                    (m => m.GetTimeoutMs() == 1000.0 && m.GetRequestId() == 1)))
+                    (m => m.GetTimeoutMs() == 1000.0 && m.GetRequestId() > 0)))
                 .MustHaveHappened(Repeated.Exactly.Once);
         }
 

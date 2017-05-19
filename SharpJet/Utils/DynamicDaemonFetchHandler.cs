@@ -46,10 +46,13 @@ namespace Hbm.Devices.Jet.Utils
         private readonly Dictionary<int, JetFetcher> openFetches;
         private readonly Func<JetMethod, JObject> jetMethodExecution;
 
+        internal IPathBuilder PathBuilder { get; set; }
+
         internal DynamicDaemonFetchHandler(Func<JetMethod, JObject> jetMethodExecution)
         {
             allFetches = new HashSet<FetchId>();
             openFetches = new Dictionary<int, JetFetcher>();
+            PathBuilder = new PathBuilder();
             this.jetMethodExecution = jetMethodExecution;
         }
 
@@ -61,7 +64,7 @@ namespace Hbm.Devices.Jet.Utils
             this.RegisterFetcher(fetchId, fetcher);
 
             JObject parameters = new JObject();
-            JObject path = this.FillPath(matcher);
+            JObject path = PathBuilder.Fill(matcher);
             if (path != null)
             {
                 parameters["path"] = path;
@@ -149,49 +152,6 @@ namespace Hbm.Devices.Jet.Utils
             lock (this.openFetches)
             {
                 this.openFetches.Remove(fetchId);
-            }
-        }
-
-        private JObject FillPath(Matcher matcher)
-        {
-            JObject path = new JObject();
-            if (!string.IsNullOrEmpty(matcher.Contains))
-            {
-                path["contains"] = matcher.Contains;
-            }
-
-            if (!string.IsNullOrEmpty(matcher.StartsWith))
-            {
-                path["startsWith"] = matcher.StartsWith;
-            }
-
-            if (!string.IsNullOrEmpty(matcher.EndsWith))
-            {
-                path["endsWith"] = matcher.EndsWith;
-            }
-
-            if (!string.IsNullOrEmpty(matcher.EqualsTo))
-            {
-                path["equals"] = matcher.EqualsTo;
-            }
-
-            if (!string.IsNullOrEmpty(matcher.EqualsNotTo))
-            {
-                path["equalsNot"] = matcher.EqualsNotTo;
-            }
-
-            if ((matcher.ContainsAllOf != null) && matcher.ContainsAllOf.Length > 0)
-            {
-                path["containsAllOf"] = JToken.FromObject(matcher.ContainsAllOf);
-            }
-
-            if (path.Count == 0)
-            {
-                return null;
-            }
-            else
-            {
-                return path;
             }
         }
     }
