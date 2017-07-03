@@ -28,6 +28,12 @@
 //
 // </copyright>
 
+using System;
+using System.Runtime.CompilerServices;
+using System.Text;
+
+[assembly: InternalsVisibleTo("SharpJetTests")]
+
 namespace Hbm.Devices.Jet
 {
     /// <summary>
@@ -48,5 +54,38 @@ namespace Hbm.Devices.Jet
         public string EqualsNotTo { get; set; }
 
         public bool CaseInsensitive { get; set; }
+
+        internal bool Match(string path)
+        {
+            StringComparison comparison = CaseInsensitive
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+
+            if (string.IsNullOrEmpty(Contains) == false && path.IndexOf(Contains, comparison) >= 0)
+                return true;
+
+            if (ContainsAllOf != null)
+            {
+                foreach (string contains in ContainsAllOf)
+                {
+                    if (path.IndexOf(contains, comparison) >= 0)
+                        return true;
+                }
+            }
+
+            if (string.IsNullOrEmpty(StartsWith) == false && path.StartsWith(StartsWith, comparison))
+                return true;
+
+            if (string.IsNullOrEmpty(EndsWith) == false && path.EndsWith(EndsWith, comparison))
+                return true;
+
+            if (string.IsNullOrEmpty(EqualsTo) == false && EqualsTo.Equals(path, comparison))
+                return true;
+
+            if (string.IsNullOrEmpty(EqualsNotTo) == false && EqualsNotTo.Equals(path, comparison) == false)
+                return true;
+
+            return false;
+        }
     }
 }

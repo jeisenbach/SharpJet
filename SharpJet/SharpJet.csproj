@@ -64,13 +64,15 @@
     <Compile Include="SocketJetConnection.cs">
       <ExcludeFromStyleCop>False</ExcludeFromStyleCop>
     </Compile>
+    <Compile Include="StatusCode.cs" />
     <Compile Include="Utils\DisposableBase.cs" />
-    <Compile Include="Utils\DynamicDaemonFetchHandler.cs" />
+    <Compile Include="Utils\FullFetchHandler.cs" />
     <Compile Include="Utils\IFetchHandler.cs" />
     <Compile Include="Utils\IPathBuilder.cs" />
     <Compile Include="Utils\ITimer.cs" />
     <Compile Include="Utils\IWebSocket.cs" />
     <Compile Include="Utils\PathBuilder.cs" />
+    <Compile Include="Utils\SimpleFetchHandler.cs" />
     <Compile Include="Utils\TimerAdapter.cs">
       <SubType>Component</SubType>
     </Compile>

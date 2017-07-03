@@ -64,22 +64,22 @@ namespace Hbm.Devices.Jet
             this.responseTimeoutMs = responseTimeoutMs;
             this.responseCallback = responseCallback;
 
-            JObject json = new JObject();
-            json["jsonrpc"] = "2.0";
-            json["method"] = method;
+            JObject jsonObject = new JObject();
+            jsonObject["jsonrpc"] = "2.0";
+            jsonObject["method"] = method;
             if (responseCallback != null)
             {
                 this.RequestTimer = new TimerAdapter();
                 this.requestId = Interlocked.Increment(ref requestIdCounter);
-                json["id"] = this.requestId;
+                jsonObject["id"] = this.requestId;
             }
 
             if (parameters != null)
             {
-                json["params"] = parameters;
+                jsonObject["params"] = parameters;
             }
 
-            this.json = json;
+            this.json = jsonObject;
         }
 
         protected override void Dispose(bool disposing)

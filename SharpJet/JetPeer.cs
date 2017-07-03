@@ -43,6 +43,9 @@ namespace Hbm.Devices.Jet
 
     public class JetPeer
     {
+        private readonly object lockObject = new object();
+        private Action<bool> connectCallback;
+        private double connectTimeoutMs;
         private const double DefaultRoutingTimeout = 1000.0;
 
         private IJetConnection connection;
@@ -59,12 +62,23 @@ namespace Hbm.Devices.Jet
             this.methodCallbacks = new Dictionary<string, Func<string, JToken, JToken>>();
             this.connection = connection;
             connection.HandleIncomingMessage += this.HandleIncomingJson;
-            FetchHandler = new DynamicDaemonFetchHandler(this.ExecuteMethod);
         }
 
         public void Connect(Action<bool> completed, double timeoutMs)
         {
-            this.connection.Connect(completed, timeoutMs);
+            this.connectCallback = completed;
+            this.connectTimeoutMs = timeoutMs;
+            this.connection.Connect((bool success) =>
+            {
+                if (success)
+                {
+                    this.Info(InfoOnConnectCallback, timeoutMs);
+                }
+                else
+                {
+                    this.connectCallback(false);
+                }
+            }, timeoutMs);
         }
 
         public void Disconnect()
@@ -78,7 +92,7 @@ namespace Hbm.Devices.Jet
 
         public JObject Info(Action<bool, JToken> responseCallback, double responseTimeoutMs)
         {
-            JetMethod info = new JetMethod(JetMethod.Info, null, responseCallback, responseTimeoutMs);
+            JetMethod info = new JetMethod(JetMethod.Info, new JObject(), responseCallback, responseTimeoutMs);
             return this.ExecuteMethod(info);
         }
 
@@ -149,7 +163,7 @@ namespace Hbm.Devices.Jet
             JToken value,
             Func<string, JToken, JToken> stateCallback,
             Action<bool, JToken> responseCallback,
-            double responseTimeoutMilliseconds, 
+            double responseTimeoutMilliseconds,
             double stateSetTimeoutMilliseconds = DefaultRoutingTimeout)
         {
             return this.AddState(path, value, null, null, stateCallback, responseCallback, responseTimeoutMilliseconds, stateSetTimeoutMilliseconds);
@@ -276,7 +290,7 @@ namespace Hbm.Devices.Jet
             if (stateSetTimeoutMs > 0.1)
             {
                 parameters["timeout"] = stateSetTimeoutMs / 1000.0;
-            } 
+            }
 
             JetMethod set = new JetMethod(JetMethod.Set, parameters, responseCallback, responseTimeoutMs);
             return this.ExecuteMethod(set);
@@ -286,7 +300,7 @@ namespace Hbm.Devices.Jet
         {
             if (path == null)
             {
-                throw new ArgumentNullException("path");
+                throw new ArgumentNullException(nameof(path));
             }
 
             lock (this.stateCallbacks)
@@ -378,37 +392,70 @@ namespace Hbm.Devices.Jet
             }
         }
 
+        private void InfoOnConnectCallback(bool success, JToken json)
+        {
+            if (success)
+            {
+                string fetchType = json["result"]?["features"]?["fetch"]?.ToString();
+
+                if (fetchType == "simple")
+                {
+                    FetchHandler = new SimpleFetchHandler(ExecuteMethod);
+                    this.connectCallback(true);
+                }
+                else if (fetchType == "full")
+                {
+                    FetchHandler = new FullFetchHandler(ExecuteMethod);
+                    this.connectCallback(true);
+                }
+                else
+                {
+                    this.connectCallback(false);
+                }
+            }
+            else
+            {
+                this.connectCallback(false);
+            }
+        }
+
         private void HandleIncomingJson(object obj, StringEventArgs e)
         {
-            JToken json = JToken.Parse(e.Message);
-            if (json == null)
+            lock (this.lockObject)
             {
-                return;
-            }
 
-            if (json.Type == JTokenType.Object)
-            {
-                this.HandleJsonMessage((JObject)json);
-                return;
-            }
 
-            if (json.Type == JTokenType.Array)
-            {
-                foreach (var item in json.Children())
+
+                JToken json = JToken.Parse(e.Message);
+                if (json == null)
                 {
-                    if (item.Type == JTokenType.Object)
-                    {
-                        this.HandleJsonMessage((JObject)item);
-                    }
+                    return;
                 }
 
-                return;
+                if (json.Type == JTokenType.Object)
+                {
+                    this.HandleJsonMessage((JObject)json);
+                    return;
+                }
+
+                if (json.Type == JTokenType.Array)
+                {
+                    foreach (var item in json.Children())
+                    {
+                        if (item.Type == JTokenType.Object)
+                        {
+                            this.HandleJsonMessage((JObject)item);
+                        }
+                    }
+
+                    return;
+                }
             }
         }
 
         private void HandleJsonMessage(JObject json)
         {
-            JToken fetchIdToken = this.GetFetchId(json);
+            JToken fetchIdToken = FetchHandler?.GetFetchId(json);
             if (fetchIdToken != null)
             {
                 this.HandleFetch(fetchIdToken.ToObject<int>(), json);
@@ -429,7 +476,7 @@ namespace Hbm.Devices.Jet
             double timeoutMs = method.GetTimeoutMs();
             if (timeoutMs < 0.0)
             {
-                throw new ArgumentException("timeoutMs");
+                throw new ArgumentException(nameof(timeoutMs));
             }
 
             if (method.HasResponseCallback())
@@ -636,7 +683,6 @@ namespace Hbm.Devices.Jet
                 JObject result = new JObject();
                 result["result"] = callback(jetPath, parameters);
                 this.SendResponse(json, result);
-
                 return;
             }
         }
