@@ -28,13 +28,15 @@
 //
 // </copyright>
 
-using System.Threading;
+using System.Runtime.CompilerServices;
+[assembly:InternalsVisibleTo("SharpJetTests")]
 
 namespace Hbm.Devices.Jet.Utils
 {
     using System;
     using System.Collections.Generic;
     using Newtonsoft.Json.Linq;
+    using System.Threading;
 
     internal class SimpleFetchHandler : IFetchHandler
     {
@@ -102,7 +104,7 @@ namespace Hbm.Devices.Jet.Utils
             return new JObject();
         }
 
-        public void HandleFetch(int fetchId, JObject json)
+        public StatusCode HandleFetch(int fetchId, JObject json)
         {
             lock (this.lockObject)
             {
@@ -110,23 +112,24 @@ namespace Hbm.Devices.Jet.Utils
 
                 if (parameter == null)
                 {
-                    //TODO: handle
-                    throw new Exception();
+                    return StatusCode.ParamsNotSpecified;
                 }
 
                 string jetEvent = parameter["event"]?.ToString();
                 if (jetEvent == "add")
                 {
-                    HandleFetchAddEvent(parameter);
+                    return HandleFetchAddEvent(parameter);
                 }
                 else if (jetEvent == "change")
                 {
-                    HandleFetchChangeEvent(parameter);
+                    return HandleFetchChangeEvent(parameter);
                 }
                 else if (jetEvent == "remove")
                 {
-                    HandleFetchRemoveEvent(parameter);
+                    return HandleFetchRemoveEvent(parameter);
                 }
+
+                return StatusCode.Success;
             }
         }
 
@@ -151,6 +154,11 @@ namespace Hbm.Devices.Jet.Utils
             return null;
         }
 
+        private void ProcessError(StatusCode statusCode)
+        {
+            
+        }
+
         private void ProcessPath(string path, JToken parameter)
         {
             HashSet<Matcher> matchers = this.cachedPaths[path];
@@ -161,33 +169,35 @@ namespace Hbm.Devices.Jet.Utils
             }
         }
 
-        private void HandleFetchRemoveEvent(JToken parameter)
+        private StatusCode HandleFetchRemoveEvent(JToken parameter)
         {
             string path = parameter["path"].ToString();
             if (this.cachedPaths.ContainsKey(path))
             {
                 this.cachedPaths.Remove(path);
+                return StatusCode.Success;
             }
             else
             {
-                //TODO: Fehler remove ohne vorher add!
+                return StatusCode.RemoveWithoutAdd;
             }
         }
 
-        private void HandleFetchChangeEvent(JToken parameter)
+        private StatusCode HandleFetchChangeEvent(JToken parameter)
         {
             string path = parameter["path"].ToString();
             if (this.cachedPaths.ContainsKey(path) == false)
             {
-                //TODO: Fehlerfall. Change darf nicht ohne Add aufgerufen
+                return StatusCode.ChangeWithoutAdd;
             }
             else
             {
                 ProcessPath(path, parameter);
+                return StatusCode.Success;
             }
         }
 
-        private void HandleFetchAddEvent(JToken parameter)
+        private StatusCode HandleFetchAddEvent(JToken parameter)
         {
             string path = parameter["path"].ToString();
             if (this.cachedPaths.ContainsKey(path) == false)
@@ -201,12 +211,13 @@ namespace Hbm.Devices.Jet.Utils
                     }
                 }
                 this.cachedPaths.Add(path, matchersForPath);
+                ProcessPath(path, parameter);
+                return StatusCode.Success;
             }
             else
             {
-                //TODO: Fehlerfall! Add darf nicht zweimal aufgerufen werden
+                return StatusCode.ChangeWithoutAdd;
             }
-            ProcessPath(path, parameter);
         }
 
         private void RegisterMatcher(int fetchId, Matcher matcher, Action<JToken> fetchCallback)

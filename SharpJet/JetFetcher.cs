@@ -35,7 +35,7 @@ namespace Hbm.Devices.Jet
 
     internal class JetFetcher
     {
-        private Action<JToken> fetchCallback;
+        private readonly Action<JToken> fetchCallback;
 
         internal JetFetcher(Action<JToken> callback)
         {

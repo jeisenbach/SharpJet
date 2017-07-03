@@ -53,6 +53,8 @@ namespace Hbm.Devices.Jet
         private Dictionary<string, Func<string, JToken, JToken>> stateCallbacks;
         private Dictionary<string, Func<string, JToken, JToken>> methodCallbacks;
 
+        public event EventHandler<JetPeerErrorEventArgs> JetPeerError;
+
         internal IFetchHandler FetchHandler { get; set; }
 
         public JetPeer(IJetConnection connection)
@@ -307,7 +309,7 @@ namespace Hbm.Devices.Jet
             {
                 if (!this.stateCallbacks.ContainsKey(path))
                 {
-                    throw new ArgumentException("You can't call Change() on a state you don't own!", "path");
+                    throw new ArgumentException("You can't call Change() on a state you don't own!", nameof(path));
                 }
             }
 
@@ -334,7 +336,7 @@ namespace Hbm.Devices.Jet
             {
                 if (this.methodCallbacks.ContainsKey(path))
                 {
-                    throw new ArgumentException("You can't call Call() on a method you don't own!", "path");
+                    throw new ArgumentException("You can't call Call() on a method you don't own!", nameof(path));
                 }
             }
 
@@ -423,9 +425,6 @@ namespace Hbm.Devices.Jet
         {
             lock (this.lockObject)
             {
-
-
-
                 JToken json = JToken.Parse(e.Message);
                 if (json == null)
                 {
@@ -503,6 +502,11 @@ namespace Hbm.Devices.Jet
             {
                 return this.stateCallbacks.Count;
             }
+        }
+
+        protected virtual void OnJetPeerError(JetPeerErrorEventArgs e)
+        {
+            JetPeerError?.Invoke(this, e);
         }
 
         private void RemoveAllFetches()
@@ -710,7 +714,12 @@ namespace Hbm.Devices.Jet
 
         private void HandleFetch(int fetchId, JObject json)
         {
-            FetchHandler.HandleFetch(fetchId, json);
+            StatusCode statusCode = FetchHandler.HandleFetch(fetchId, json);
+            if (statusCode != StatusCode.Success)
+            {
+                JetPeerErrorEventArgs args = new JetPeerErrorEventArgs(statusCode, json);
+                OnJetPeerError(args);
+            }
         }
 
         private bool IsResponse(JObject json)

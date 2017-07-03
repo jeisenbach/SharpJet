@@ -38,7 +38,7 @@ namespace Hbm.Devices.Jet.Utils
         JObject Fetch(out FetchId id, Matcher matcher, Action<JToken> fetchCallback,
             Action<bool, JToken> responseCallback, double responseTimeoutMs);
         JObject Unfetch(FetchId fetchId, Action<bool, JToken> responseCallback, double responseTimeoutMs);
-        void HandleFetch(int fetchId, JObject json);
+        StatusCode HandleFetch(int fetchId, JObject json);
         void RemoveAllFetches();
         JToken GetFetchId(JObject json);
     }

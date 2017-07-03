@@ -96,7 +96,7 @@ namespace Hbm.Devices.Jet.Utils
             return jetMethodExecution.Invoke(unfetch);
         }
 
-        public void HandleFetch(int fetchId, JObject json)
+        public StatusCode HandleFetch(int fetchId, JObject json)
         {
             JetFetcher fetcher = null;
             lock (this.openFetches)
@@ -113,12 +113,15 @@ namespace Hbm.Devices.Jet.Utils
                 if ((parameters != null) && (parameters.Type != JTokenType.Null))
                 {
                     fetcher.CallFetchCallback(parameters);
+                    return StatusCode.Success;
                 }
                 else
                 {
-                    // Todo: Log error
+                    return StatusCode.ParamsNotSpecified;
                 }
             }
+
+            return StatusCode.Success;
         }
 
         public void RemoveAllFetches()

@@ -50,6 +50,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConnectionState.cs" />
+    <Compile Include="JetPeerErrorEventArgs.cs" />
     <Compile Include="JetPeerException.cs" />
     <Compile Include="JsonRpcException.cs" />
     <Compile Include="FetchId.cs">
