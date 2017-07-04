@@ -28,14 +28,13 @@
 //
 // </copyright>
 
-using System;
 using System.Runtime.CompilerServices;
-using System.Text;
-
 [assembly: InternalsVisibleTo("SharpJetTests")]
 
 namespace Hbm.Devices.Jet
 {
+    using System;
+
     /// <summary>
     /// This class holds the properties required to fill a path matcher.
     /// </summary>
@@ -57,33 +56,56 @@ namespace Hbm.Devices.Jet
 
         internal bool Match(string path)
         {
+            if (string.IsNullOrEmpty(Contains) && (ContainsAllOf == null || ContainsAllOf.Length == 0) &&
+                string.IsNullOrEmpty(StartsWith) &&
+                string.IsNullOrEmpty(EndsWith) && string.IsNullOrEmpty(EqualsTo) && string.IsNullOrEmpty(EqualsNotTo))
+            {
+                return true;
+            }
+
+
             StringComparison comparison = CaseInsensitive
                 ? StringComparison.OrdinalIgnoreCase
                 : StringComparison.Ordinal;
 
             if (string.IsNullOrEmpty(Contains) == false && path.IndexOf(Contains, comparison) >= 0)
+            {
                 return true;
+            }
+
 
             if (ContainsAllOf != null)
             {
+                bool containsAllOf = true;
                 foreach (string contains in ContainsAllOf)
                 {
-                    if (path.IndexOf(contains, comparison) >= 0)
-                        return true;
+                    containsAllOf &= path.IndexOf(contains, comparison) >= 0;
                 }
+
+                if (containsAllOf)
+                    return true;
             }
 
             if (string.IsNullOrEmpty(StartsWith) == false && path.StartsWith(StartsWith, comparison))
+            {
                 return true;
+            }
+
 
             if (string.IsNullOrEmpty(EndsWith) == false && path.EndsWith(EndsWith, comparison))
+            {
                 return true;
+            }
 
             if (string.IsNullOrEmpty(EqualsTo) == false && EqualsTo.Equals(path, comparison))
+            {
                 return true;
+            }
 
             if (string.IsNullOrEmpty(EqualsNotTo) == false && EqualsNotTo.Equals(path, comparison) == false)
+            {
                 return true;
+            }
 
             return false;
         }

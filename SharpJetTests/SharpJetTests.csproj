@@ -62,6 +62,7 @@
     <Compile Include="JetMethodTests.cs" />
     <Compile Include="JetPeerExceptionTests.cs" />
     <Compile Include="JsonRpcExceptionTests.cs" />
+    <Compile Include="MatcherTests.cs" />
     <Compile Include="SetCallbacksTests.cs" />
     <Compile Include="SetTests.cs" />
     <Compile Include="SimpleFetchHandlerTests.cs" />
