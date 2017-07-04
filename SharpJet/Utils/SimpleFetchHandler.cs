@@ -44,15 +44,15 @@ namespace Hbm.Devices.Jet.Utils
         private bool isFetching;
         private int fetchIdCounter;
         private readonly Func<JetMethod, JObject> jetMethodExecution;
-        private readonly Dictionary<string, HashSet<Matcher>> cachedPaths;
-        private readonly Dictionary<Matcher, JetFetcher> matcherFetcherPairs;
-        private readonly Dictionary<int, Matcher> registeredMatchers;
+        internal Dictionary<string, HashSet<Matcher>> CachedPaths { get; }
+        internal Dictionary<Matcher, JetFetcher> MatcherFetcherPairs { get; }
+        internal Dictionary<int, Matcher> RegisteredMatchers { get; }
 
         internal SimpleFetchHandler(Func<JetMethod, JObject> jetMethodExecution)
         {
-            this.cachedPaths = new Dictionary<string, HashSet<Matcher>>();
-            this.matcherFetcherPairs = new Dictionary<Matcher, JetFetcher>();
-            this.registeredMatchers = new Dictionary<int, Matcher>();
+            this.CachedPaths = new Dictionary<string, HashSet<Matcher>>();
+            this.MatcherFetcherPairs = new Dictionary<Matcher, JetFetcher>();
+            this.RegisteredMatchers = new Dictionary<int, Matcher>();
             this.jetMethodExecution = jetMethodExecution;
         }
 
@@ -85,23 +85,31 @@ namespace Hbm.Devices.Jet.Utils
 
         public JObject Unfetch(FetchId fetchId, Action<bool, JToken> responseCallback, double responseTimeoutMs)
         {
+            if (fetchId == null)
+            {
+                throw new ArgumentNullException(nameof(fetchId));
+            }
+
             lock (this.lockObject)
             {
                 int id = fetchId.GetId();
-                if (this.registeredMatchers.ContainsKey(id))
+                if (this.RegisteredMatchers.ContainsKey(id))
                 {
-                    Matcher matcher = this.registeredMatchers[id];
-                    this.matcherFetcherPairs.Remove(matcher);
+                    Matcher matcher = this.RegisteredMatchers[id];
+                    this.MatcherFetcherPairs.Remove(matcher);
 
-                    foreach (string path in this.cachedPaths.Keys)
+                    foreach (string path in this.CachedPaths.Keys)
                     {
-                        HashSet<Matcher> matchers = this.cachedPaths[path];
+                        HashSet<Matcher> matchers = this.CachedPaths[path];
                         matchers.Remove(matcher);
                     }
-                    this.registeredMatchers.Remove(id);
+                    this.RegisteredMatchers.Remove(id);
                 }
+                JObject json = new JObject();
+                json["id"] = id;
+                json["result"] = true;
+                return json;
             }
-            return new JObject();
         }
 
         public StatusCode HandleFetch(int fetchId, JObject json)
@@ -116,6 +124,12 @@ namespace Hbm.Devices.Jet.Utils
                 }
 
                 string jetEvent = parameter["event"]?.ToString();
+
+                if (jetEvent == null)
+                {
+                    return StatusCode.FetchEventNotSpecified;
+                }
+
                 if (jetEvent == "add")
                 {
                     return HandleFetchAddEvent(parameter);
@@ -137,9 +151,9 @@ namespace Hbm.Devices.Jet.Utils
         {
             lock (this.lockObject)
             {
-                this.registeredMatchers.Clear();
-                this.cachedPaths.Clear();
-                this.matcherFetcherPairs.Clear();
+                this.RegisteredMatchers.Clear();
+                this.CachedPaths.Clear();
+                this.MatcherFetcherPairs.Clear();
             }
         }
 
@@ -154,17 +168,12 @@ namespace Hbm.Devices.Jet.Utils
             return null;
         }
 
-        private void ProcessError(StatusCode statusCode)
-        {
-            
-        }
-
         private void ProcessPath(string path, JToken parameter)
         {
-            HashSet<Matcher> matchers = this.cachedPaths[path];
+            HashSet<Matcher> matchers = this.CachedPaths[path];
             foreach (Matcher matcher in matchers)
             {
-                JetFetcher fetcher = this.matcherFetcherPairs[matcher];
+                JetFetcher fetcher = this.MatcherFetcherPairs[matcher];
                 fetcher.CallFetchCallback(parameter);
             }
         }
@@ -172,9 +181,10 @@ namespace Hbm.Devices.Jet.Utils
         private StatusCode HandleFetchRemoveEvent(JToken parameter)
         {
             string path = parameter["path"].ToString();
-            if (this.cachedPaths.ContainsKey(path))
+            if (this.CachedPaths.ContainsKey(path))
             {
-                this.cachedPaths.Remove(path);
+                ProcessPath(path, parameter);
+                this.CachedPaths.Remove(path);
                 return StatusCode.Success;
             }
             else
@@ -186,7 +196,7 @@ namespace Hbm.Devices.Jet.Utils
         private StatusCode HandleFetchChangeEvent(JToken parameter)
         {
             string path = parameter["path"].ToString();
-            if (this.cachedPaths.ContainsKey(path) == false)
+            if (this.CachedPaths.ContainsKey(path) == false)
             {
                 return StatusCode.ChangeWithoutAdd;
             }
@@ -200,23 +210,23 @@ namespace Hbm.Devices.Jet.Utils
         private StatusCode HandleFetchAddEvent(JToken parameter)
         {
             string path = parameter["path"].ToString();
-            if (this.cachedPaths.ContainsKey(path) == false)
+            if (this.CachedPaths.ContainsKey(path) == false)
             {
                 HashSet<Matcher> matchersForPath = new HashSet<Matcher>();
-                foreach (Matcher matcher in this.matcherFetcherPairs.Keys)
+                foreach (Matcher matcher in this.MatcherFetcherPairs.Keys)
                 {
                     if (matcher.Match(path))
                     {
                         matchersForPath.Add(matcher);
                     }
                 }
-                this.cachedPaths.Add(path, matchersForPath);
+                this.CachedPaths.Add(path, matchersForPath);
                 ProcessPath(path, parameter);
                 return StatusCode.Success;
             }
             else
             {
-                return StatusCode.ChangeWithoutAdd;
+                return StatusCode.MultipleAdd;
             }
         }
 
@@ -224,15 +234,15 @@ namespace Hbm.Devices.Jet.Utils
         {
             lock (lockObject)
             {
-                if (this.registeredMatchers.ContainsKey(fetchId) == false)
+                if (this.RegisteredMatchers.ContainsKey(fetchId) == false)
                 {
-                    this.registeredMatchers.Add(fetchId, matcher);
-                    this.matcherFetcherPairs.Add(matcher, new JetFetcher(fetchCallback));
+                    this.RegisteredMatchers.Add(fetchId, matcher);
+                    this.MatcherFetcherPairs.Add(matcher, new JetFetcher(fetchCallback));
 
-                    foreach (string path in this.cachedPaths.Keys)
+                    foreach (string path in this.CachedPaths.Keys)
                     {
                         if (matcher.Match(path))
-                            this.cachedPaths[path].Add(matcher);
+                            this.CachedPaths[path].Add(matcher);
                     }
                 }
             }

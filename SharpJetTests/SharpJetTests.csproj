@@ -64,6 +64,7 @@
     <Compile Include="JsonRpcExceptionTests.cs" />
     <Compile Include="SetCallbacksTests.cs" />
     <Compile Include="SetTests.cs" />
+    <Compile Include="SimpleFetchHandlerTests.cs" />
     <Compile Include="TestJetConnection.cs" />
     <Compile Include="TestSetConnection.cs" />
     <Compile Include="PathBuilderTests.cs" />

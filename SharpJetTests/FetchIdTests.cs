@@ -104,7 +104,7 @@ namespace SharpJetTests
         {
             FetchId leftOperand = null;
             FetchId rightOperand = null;
-            Assert.IsFalse(leftOperand == rightOperand, "Expected == call to be false.");
+            Assert.IsTrue(leftOperand == rightOperand, "Expected == call to be true.");
         }
 
         [Test]

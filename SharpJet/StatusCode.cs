@@ -6,6 +6,7 @@
         ChangeWithoutAdd = -1,
         RemoveWithoutAdd = -2,
         MultipleAdd = -3,
-        ParamsNotSpecified = -4
+        ParamsNotSpecified = -4,
+        FetchEventNotSpecified = -5
     }
 }
